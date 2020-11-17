@@ -8,11 +8,6 @@ The idea is to execute it inside a pipeline to register updates of microservices
 The utility first tries to use the login from the azure cli.
 If this fails it will try to retrieve credentials from the [runtime environment](https://docs.microsoft.com/en-us/azure/developer/go/azure-sdk-authorization#use-environment-based-authentication).
 
-`ATTENTION:` ***At the moment there is a bug in the code which will always overwrite all defined versions of the API with the specified one !!! ***
-E.g. if you have a v1 in APIM and run the utility with -apiversion v2, the v1 registration will be deleted!
-
-
-
 ## Installation
 
 ```bash
