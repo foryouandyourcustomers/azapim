@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -89,7 +90,7 @@ func (apim *azureApimClient) createOrUpdate(apidef *apiDefinition) {
 		apim.ctx,
 		apim.resourceGroup,
 		apim.serviceName,
-		apidef.apiID,
+		apidef.apiUniqueID,
 		apiProperties,
 		uuid.New().String())
 	if err != nil {
@@ -111,7 +112,7 @@ func (apim *azureApimClient) createOrUpdate(apidef *apiDefinition) {
 		apim.ctx,
 		apim.resourceGroup,
 		apim.serviceName,
-		apidef.apiID,
+		apidef.apiUniqueID,
 		apiPolicy,
 		uuid.New().String(),
 	)
@@ -131,6 +132,7 @@ type apiDefinition struct {
 	xmlPolicyFormat apimanagement.PolicyContentFormat
 
 	apiID               string
+	apiUniqueID         string
 	apiDisplayName      string
 	apiVersion          string
 	apiVersioningScheme apimanagement.VersioningScheme
@@ -139,6 +141,14 @@ type apiDefinition struct {
 
 	apiProtocols         []apimanagement.Protocol
 	subscriptionRequired bool
+}
+
+func (api *apiDefinition) setDefaults() {
+	api.apiProtocols = append(apiDef.apiProtocols, apimanagement.ProtocolHTTPS)
+	api.apiVersioningScheme = apimanagement.VersioningSchemeSegment
+	api.subscriptionRequired = true
+	api.apiRevision = "1"
+	api.apiUniqueID = fmt.Sprintf("%s-%s", api.apiID, api.apiVersion)
 }
 
 func (api *apiDefinition) getOpenAPISpec() {
@@ -262,10 +272,7 @@ func main() {
 	apimClient.authenticate()
 
 	// retrieve api definiton and xml policy
-	apiDef.apiProtocols = append(apiDef.apiProtocols, apimanagement.ProtocolHTTPS)
-	apiDef.apiVersioningScheme = apimanagement.VersioningSchemeSegment
-	apiDef.subscriptionRequired = true
-	apiDef.apiRevision = "1"
+	apiDef.setDefaults()
 	apiDef.getOpenAPISpec()
 	apiDef.getXMLPolicy()
 
