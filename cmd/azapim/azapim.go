@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -26,17 +25,16 @@ type azureApimClient struct {
 	ctx              context.Context
 	apiClient        apimanagement.APIClient
 	versionSetClient apimanagement.APIVersionSetClient
-	policyClient     apimanagement.PolicyClient
-
-	subscription  string
-	resourceGroup string
-	serviceName   string
+	apiPolicyClient  apimanagement.APIPolicyClient
+	subscription     string
+	resourceGroup    string
+	serviceName      string
 }
 
 func (apim *azureApimClient) authenticate() {
 	apim.apiClient = apimanagement.NewAPIClient(apim.subscription)
 	apim.versionSetClient = apimanagement.NewAPIVersionSetClient(apim.subscription)
-	apim.policyClient = apimanagement.NewPolicyClient(apim.subscription)
+	apim.apiPolicyClient = apimanagement.NewAPIPolicyClient(apim.subscription)
 
 	a, err := auth.NewAuthorizerFromCLI()
 	if err != nil {
@@ -48,11 +46,11 @@ func (apim *azureApimClient) authenticate() {
 	}
 	apim.apiClient.Authorizer = a
 	apim.versionSetClient.Authorizer = a
-	apim.policyClient.Authorizer = a
+	apim.apiPolicyClient.Authorizer = a
 }
 
 func (apim *azureApimClient) createOrUpdate(apidef *apiDefinition) {
-	apiVersionSetID := fmt.Sprintf("%s%s", apidef.apiName, apidef.apiVersion)
+	apiVersionSetID := fmt.Sprintf("%s%s", apidef.apiID, apidef.apiVersion)
 
 	apiVersionSet := apimanagement.APIVersionSetContract{
 		APIVersionSetContractProperties: &apimanagement.APIVersionSetContractProperties{
@@ -70,15 +68,15 @@ func (apim *azureApimClient) createOrUpdate(apidef *apiDefinition) {
 		apiVersionSet,
 		uuid.New().String())
 	if err != nil {
-		log.Fatalf("cannot create api versionset endpoint: %v", err)
+		log.Fatalf("cannot create api versionset: %v", err)
 	}
-	log.Info("Created/Updated API version set '%s'", *apiVersionSetContract.ID)
+	log.Infof("Created/Updated API version set '%s'\n", *apiVersionSetContract.ID)
 
 	apiProperties := apimanagement.APICreateOrUpdateParameter{
 		APICreateOrUpdateProperties: &apimanagement.APICreateOrUpdateProperties{
 			Format:               apidef.openAPIFormat,
 			DisplayName:          &apidef.apiDisplayName,
-			Value:                &apidef.openAPISpecPath,
+			Value:                &apidef.openAPISpec,
 			Protocols:            &apidef.apiProtocols,
 			Path:                 &apidef.apiPath,
 			SubscriptionRequired: &apidef.subscriptionRequired,
@@ -87,34 +85,53 @@ func (apim *azureApimClient) createOrUpdate(apidef *apiDefinition) {
 		},
 	}
 
-	log.Infof("Creating/Updating API '%s'", apidef.apiDisplayName)
+	log.Infof("Creating/Updating API '%s'\n", apidef.apiDisplayName)
 	future, err := apim.apiClient.CreateOrUpdate(
 		apim.ctx,
 		apim.resourceGroup,
 		apim.serviceName,
-		apidef.apiName,
+		apidef.apiID,
 		apiProperties,
 		uuid.New().String())
 	if err != nil {
-		log.Fatalf("cannot create api endpoint: %v", err)
+		log.Fatalf("cannot create api endpoint: %v\n", err)
 	}
 	err = future.WaitForCompletionRef(apim.ctx, apim.apiClient.Client)
 	if err != nil {
-		log.Fatalf("cannot get the api endpoint future response: %v", err)
+		log.Fatalf("cannot get the api endpoint future response: %v\n", err)
 	}
 
-	//apim.apiClient.Cre-ateOrUpdate(apim.ctx, apim.resourceGroupName, apim.serviceName, api.apiName, parameters apimanagement.APICreateOrUpdateParameter, ifMatch string)
+	log.Infof("Update API policy with policy definition '%s'\n", apidef.xmlPolicyPath)
+	apiPolicy := apimanagement.PolicyContract{
+		PolicyContractProperties: &apimanagement.PolicyContractProperties{
+			Format: apidef.xmlPolicyFormat,
+			Value:  &apidef.xmlPolicy,
+		},
+	}
+	apiPolicyContract, err := apim.apiPolicyClient.CreateOrUpdate(
+		apim.ctx,
+		apim.resourceGroup,
+		apim.serviceName,
+		apidef.apiID,
+		apiPolicy,
+		uuid.New().String(),
+	)
+	if err != nil {
+		log.Fatalf("cannot create api policy: %v\n", err)
+	}
+	log.Infof("Created/Updated API Polic set '%s'\n", *apiPolicyContract.ID)
 }
 
 type apiDefinition struct {
 	openAPISpecPath string
-	openAPISpec     io.ReadCloser
+	openAPISpec     string
 	openAPIFormat   apimanagement.ContentFormat
 
-	xmlPolicyPath string
-	xmlPolicy     io.ReadCloser
+	xmlPolicyPath   string
+	xmlPolicy       string
+	xmlPolicyFormat apimanagement.PolicyContentFormat
 
-	apiName             string
+	apiID               string
 	apiDisplayName      string
 	apiVersion          string
 	apiVersioningScheme apimanagement.VersioningScheme
@@ -127,18 +144,9 @@ type apiDefinition struct {
 func (api *apiDefinition) getOpenAPISpec() {
 
 	if strings.HasPrefix(api.openAPISpecPath, "https://") || strings.HasPrefix(api.openAPISpecPath, "http://") {
-		// log.Infof("Download openapi spec from: %s", api.openApiSpecPath)
-		// resp, err := http.Get(api.openAPISpecPath)
-		// if err != nil {
-		// 	log.Fatal(err)
-		// }
-		// if resp.StatusCode != http.StatusOK {
-		// 	log.Fatalf("Unable to download file - Status Code: %d", resp.StatusCode)
-		// }
-		// api.openAPISpec = resp.Body
-
 		log.Infof("OpenApi Spec will be downloaded by APIM during create/update from '%s'", api.openAPISpecPath)
 		api.openAPIFormat = apimanagement.OpenapijsonLink
+		api.openAPISpec = api.openAPISpecPath
 	} else {
 		log.Infof("Load openapi spec from file: %s", api.openAPISpecPath)
 
@@ -146,20 +154,21 @@ func (api *apiDefinition) getOpenAPISpec() {
 		if strings.HasPrefix(f, "file://") {
 			f = f[7:]
 		}
-		file, err := os.Open(f) // For read access.
+		file, err := ioutil.ReadFile(f)
 		if err != nil {
 			log.Fatal(err)
 		}
-		api.openAPISpec = file
+		api.openAPISpec = string(file)
 		api.openAPIFormat = apimanagement.Openapijson
-		log.Fatal("Loading from file is currently not implemented !")
 	}
 }
 
 func (api *apiDefinition) getXMLPolicy() {
 	if api.xmlPolicyPath == "" {
 		log.Info("No xml policy given, load default policy")
-		defXMLPolicy := `<policies>
+		api.xmlPolicyFormat = apimanagement.XML
+		api.xmlPolicyPath = "none (default policy)"
+		api.xmlPolicy = `<policies>
 <inbound>
 <base />
 </inbound>
@@ -173,20 +182,36 @@ func (api *apiDefinition) getXMLPolicy() {
 <base />
 </on-error>
 </policies>`
-		api.xmlPolicy = ioutil.NopCloser(strings.NewReader(defXMLPolicy))
+	} else if strings.HasPrefix(api.xmlPolicyPath, "https://") || strings.HasPrefix(api.xmlPolicyPath, "http://") {
+		log.Infof("Xml Policy will be downloaded by APIM during create/update from '%s'", api.xmlPolicyPath)
+		api.xmlPolicyFormat = apimanagement.XMLLink
+		api.xmlPolicy = api.xmlPolicyPath
+	} else {
+		log.Infof("Load XML policy from file: %s", api.xmlPolicyPath)
+
+		f := api.xmlPolicyPath
+		if strings.HasPrefix(f, "file://") {
+			f = f[7:]
+		}
+		file, err := ioutil.ReadFile(f)
+		if err != nil {
+			log.Fatal(err)
+		}
+		api.xmlPolicy = string(file)
+		api.xmlPolicyFormat = apimanagement.XML
 	}
 }
 
 func init() {
-	flag.StringVar(&apimClient.subscription, "s", "", "Subscription of the API management service (env var: SUBSCRIPTION)")
-	flag.StringVar(&apimClient.resourceGroup, "r", "", "Name of the resource group the APIM is in (env var: RESOURCEGROUP)")
-	flag.StringVar(&apimClient.serviceName, "a", "", "Name of the api management service (env var: APIMGMT)")
-	flag.StringVar(&apiDef.openAPISpecPath, "o", "", "path to the openapi spec, either file://  or http:// (env var: OPENAPISPEC)")
-	flag.StringVar(&apiDef.xmlPolicyPath, "x", "", "path to the openapi spec , either file://  or http:// (env var: XMLPOLICY)")
-	flag.StringVar(&apiDef.apiName, "n", "", "name (api id) of the api to deploy (env var: APINAME)")
-	flag.StringVar(&apiDef.apiDisplayName, "d", "", "the display name of the api  (env var: APIDISPLAYNAME)")
-	flag.StringVar(&apiDef.apiPath, "p", "", "the api path relative to the apim service (env var: APIPATH)")
-	flag.StringVar(&apiDef.apiVersion, "v", "", "version number for the versioned api deplopyment (env var: APIVERSION)")
+	flag.StringVar(&apimClient.subscription, "subscription", "", "Subscription of the API management service (env var: SUBSCRIPTION)")
+	flag.StringVar(&apimClient.resourceGroup, "resourcegroup", "", "Name of the resource group the APIM is in (env var: RESOURCEGROUP)")
+	flag.StringVar(&apimClient.serviceName, "servicename", "", "Name of the api management service (env var: APIMGMT)")
+	flag.StringVar(&apiDef.openAPISpecPath, "openapispec", "", "path to the openapi spec, either file://  or http:// (env var: OPENAPISPEC)")
+	flag.StringVar(&apiDef.xmlPolicyPath, "xmlpolicy", "", "path to the openapi spec , either file://  or http:// (env var: XMLPOLICY) - OPTIONAL")
+	flag.StringVar(&apiDef.apiID, "apiid", "", "name (api id) of the api to deploy (env var: APIID)")
+	flag.StringVar(&apiDef.apiDisplayName, "apidisplayname", "", "the display name of the api  (env var: APIDISPLAYNAME)")
+	flag.StringVar(&apiDef.apiPath, "apipath", "", "the api path relative to the apim service (env var: APIPATH)")
+	flag.StringVar(&apiDef.apiVersion, "apiversion", "", "version number for the versioned api deplopyment (env var: APIVERSION)")
 	flag.Parse()
 
 	if os.Getenv("SUBSCRIPTION") != "" {
@@ -204,8 +229,8 @@ func init() {
 	if os.Getenv("XMLPOLICY") != "" {
 		apiDef.xmlPolicyPath = os.Getenv("XMLPOLICY")
 	}
-	if os.Getenv("APINAME") != "" {
-		apiDef.apiName = os.Getenv("APINAME")
+	if os.Getenv("APIID") != "" {
+		apiDef.apiID = os.Getenv("APIID")
 	}
 	if os.Getenv("APIDISPLAYNAME") != "" {
 		apiDef.apiDisplayName = os.Getenv("APIDISPLAYNAME")
@@ -221,7 +246,7 @@ func init() {
 		(apimClient.resourceGroup == "") ||
 		(apimClient.serviceName == "") ||
 		(apiDef.openAPISpecPath == "") ||
-		(apiDef.apiName == "") ||
+		(apiDef.apiID == "") ||
 		(apiDef.apiDisplayName == "") ||
 		(apiDef.apiPath == "") ||
 		(apiDef.apiVersion == "") {
@@ -245,18 +270,4 @@ func main() {
 
 	// create or update the specified api service
 	apimClient.createOrUpdate(&apiDef)
-
-	//apimClient.client.CreateOrUpdate(apimClient.ctx, resourceGroupName string, serviceName string, apiid string, parameters apimanagement.APICreateOrUpdateParameter, ifMatch string)
-
-	// buf := new(bytes.Buffer)
-	// buf.ReadFrom(apiDef.xmlPolicy)
-	// s := buf.String()
-	// fmt.Println(s)
-
-	// r, err := apimClient.client.Get(apimClient.ctx, "dev-mbp-infrastructure", "dev-mbp-apim", "mbp-pdf-html")
-
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-
 }
