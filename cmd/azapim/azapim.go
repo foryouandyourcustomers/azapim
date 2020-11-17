@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -50,7 +49,6 @@ func (apim *azureApimClient) authenticate() {
 }
 
 func (apim *azureApimClient) createOrUpdate(apidef *apiDefinition) {
-	apiVersionSetID := fmt.Sprintf("%s%s", apidef.apiID, apidef.apiVersion)
 
 	apiVersionSet := apimanagement.APIVersionSetContract{
 		APIVersionSetContractProperties: &apimanagement.APIVersionSetContractProperties{
@@ -59,12 +57,12 @@ func (apim *azureApimClient) createOrUpdate(apidef *apiDefinition) {
 		},
 	}
 
-	log.Infof("Creating/Updating API versionset '%s'", apiVersionSetID)
+	log.Infof("Creating/Updating API versionset '%s'", apidef.apiID)
 	apiVersionSetContract, err := apim.versionSetClient.CreateOrUpdate(
 		apim.ctx,
 		apim.resourceGroup,
 		apim.serviceName,
-		apiVersionSetID,
+		apidef.apiID,
 		apiVersionSet,
 		uuid.New().String())
 	if err != nil {
@@ -82,6 +80,7 @@ func (apim *azureApimClient) createOrUpdate(apidef *apiDefinition) {
 			SubscriptionRequired: &apidef.subscriptionRequired,
 			APIVersion:           &apidef.apiVersion,
 			APIVersionSetID:      apiVersionSetContract.ID,
+			APIRevision:          &apidef.apiRevision,
 		},
 	}
 
@@ -101,7 +100,7 @@ func (apim *azureApimClient) createOrUpdate(apidef *apiDefinition) {
 		log.Fatalf("cannot get the api endpoint future response: %v\n", err)
 	}
 
-	log.Infof("Update API policy with policy definition '%s'\n", apidef.xmlPolicyPath)
+	log.Infof("Update API policy with policy definition\n")
 	apiPolicy := apimanagement.PolicyContract{
 		PolicyContractProperties: &apimanagement.PolicyContractProperties{
 			Format: apidef.xmlPolicyFormat,
@@ -136,6 +135,7 @@ type apiDefinition struct {
 	apiVersion          string
 	apiVersioningScheme apimanagement.VersioningScheme
 	apiPath             string
+	apiRevision         string
 
 	apiProtocols         []apimanagement.Protocol
 	subscriptionRequired bool
@@ -206,8 +206,8 @@ func init() {
 	flag.StringVar(&apimClient.subscription, "subscription", "", "Subscription of the API management service (env var: SUBSCRIPTION)")
 	flag.StringVar(&apimClient.resourceGroup, "resourcegroup", "", "Name of the resource group the APIM is in (env var: RESOURCEGROUP)")
 	flag.StringVar(&apimClient.serviceName, "servicename", "", "Name of the api management service (env var: APIMGMT)")
-	flag.StringVar(&apiDef.openAPISpecPath, "openapispec", "", "path to the openapi spec, either file://  or http:// (env var: OPENAPISPEC)")
-	flag.StringVar(&apiDef.xmlPolicyPath, "xmlpolicy", "", "path to the openapi spec , either file://  or http:// (env var: XMLPOLICY) - OPTIONAL")
+	flag.StringVar(&apiDef.openAPISpecPath, "openapispec", "", "path to the openapi spec, either file://  or https:// (env var: OPENAPISPEC)")
+	flag.StringVar(&apiDef.xmlPolicyPath, "xmlpolicy", "", "path to the openapi spec , either file://  or https:// (env var: XMLPOLICY) - OPTIONAL")
 	flag.StringVar(&apiDef.apiID, "apiid", "", "name (api id) of the api to deploy (env var: APIID)")
 	flag.StringVar(&apiDef.apiDisplayName, "apidisplayname", "", "the display name of the api  (env var: APIDISPLAYNAME)")
 	flag.StringVar(&apiDef.apiPath, "apipath", "", "the api path relative to the apim service (env var: APIPATH)")
@@ -265,6 +265,7 @@ func main() {
 	apiDef.apiProtocols = append(apiDef.apiProtocols, apimanagement.ProtocolHTTPS)
 	apiDef.apiVersioningScheme = apimanagement.VersioningSchemeSegment
 	apiDef.subscriptionRequired = true
+	apiDef.apiRevision = "1"
 	apiDef.getOpenAPISpec()
 	apiDef.getXMLPolicy()
 
