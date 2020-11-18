@@ -27,6 +27,8 @@ Usage of ./azapim.linux:
         name (api id) of the api to deploy (env var: APIID)
   -apipath string
         the api path relative to the apim service (env var: APIPATH)
+  -apiproducts string
+        Comma separated list of products to assign the API to, Attention: tool isnt removing API from ANY products at the moment (env var: APIPRODUCTS) - OPTIONAL
   -apiserviceurl string
         Absolute URL of the backend service implementing this API (env var: APISERVICEURL)
   -apiversion string
@@ -62,6 +64,18 @@ If you specify https endpoints for the openapispec or the xml policy the data is
   -apidisplayname "httpbin api" \
   -apiid "httpbin" \
   -apipath "/httpbin" \
+  -apiserviceurl "https://my.backend.service/httpbin-v2" \
+  -apiversion "v2" \
+  -openapispec https://my.backend.service/httpbin-v2/openapispec.json \
+  -xmlpolicy "file://./policy.xml"
+
+# create or update v2 with a custom xml policy retrieved from a local file
+# and assign it to the starter and unlimited products
+./azapim \
+  -apidisplayname "httpbin api" \
+  -apiid "httpbin" \
+  -apipath "/httpbin" \
+  -apiproducts "starter,unlimited" \
   -apiserviceurl "https://my.backend.service/httpbin-v2" \
   -apiversion "v2" \
   -openapispec https://my.backend.service/httpbin-v2/openapispec.json \

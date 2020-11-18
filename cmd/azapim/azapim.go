@@ -22,19 +22,23 @@ var (
 )
 
 type azureApimClient struct {
-	ctx              context.Context
-	apiClient        apimanagement.APIClient
-	versionSetClient apimanagement.APIVersionSetClient
-	apiPolicyClient  apimanagement.APIPolicyClient
-	subscription     string
-	resourceGroup    string
-	serviceName      string
+	ctx                  context.Context
+	apiClient            apimanagement.APIClient
+	versionSetClient     apimanagement.APIVersionSetClient
+	apiPolicyClient      apimanagement.APIPolicyClient
+	apiProductsAPIClient apimanagement.ProductAPIClient
+	apiProductClient     apimanagement.ProductClient
+	subscription         string
+	resourceGroup        string
+	serviceName          string
 }
 
 func (apim *azureApimClient) authenticate() {
 	apim.apiClient = apimanagement.NewAPIClient(apim.subscription)
 	apim.versionSetClient = apimanagement.NewAPIVersionSetClient(apim.subscription)
 	apim.apiPolicyClient = apimanagement.NewAPIPolicyClient(apim.subscription)
+	apim.apiProductsAPIClient = apimanagement.NewProductAPIClient(apim.subscription)
+	apim.apiProductClient = apimanagement.NewProductClient(apim.subscription)
 
 	a, err := auth.NewAuthorizerFromCLI()
 	if err != nil {
@@ -47,6 +51,8 @@ func (apim *azureApimClient) authenticate() {
 	apim.apiClient.Authorizer = a
 	apim.versionSetClient.Authorizer = a
 	apim.apiPolicyClient.Authorizer = a
+	apim.apiProductsAPIClient.Authorizer = a
+	apim.apiProductClient.Authorizer = a
 }
 
 func (apim *azureApimClient) createOrUpdateVersionSet(
@@ -86,7 +92,7 @@ func (apim *azureApimClient) createOrUpdateAPI(
 	re string,
 	uid string,
 	su string,
-) error {
+) (apimanagement.APIContract, error) {
 	apiProperties := apimanagement.APICreateOrUpdateParameter{
 		APICreateOrUpdateProperties: &apimanagement.APICreateOrUpdateProperties{
 			Format:               cf,
@@ -109,13 +115,17 @@ func (apim *azureApimClient) createOrUpdateAPI(
 		apiProperties,
 		uuid.New().String())
 	if err != nil {
-		return err
+		return apimanagement.APIContract{}, err
 	}
 	err = future.WaitForCompletionRef(apim.ctx, apim.apiClient.Client)
 	if err != nil {
-		return err
+		return apimanagement.APIContract{}, err
 	}
-	return nil
+	contract, err := future.Result(apim.apiClient)
+	if err != nil {
+		return apimanagement.APIContract{}, err
+	}
+	return contract, nil
 
 }
 
@@ -145,8 +155,15 @@ func (apim *azureApimClient) createOrUpdatePolicy(
 	return apiPolicyContract, nil
 }
 
-func (apim *azureApimClient) createOrUpdate(a *apiDefinition) {
+func (apim *azureApimClient) assignToProduct(p string, id string) (apimanagement.APIContract, error) {
+	contract, err := apim.apiProductsAPIClient.CreateOrUpdate(apim.ctx, apim.resourceGroup, apim.serviceName, p, id)
+	if err != nil {
+		return apimanagement.APIContract{}, err
+	}
+	return contract, nil
+}
 
+func (apim *azureApimClient) createOrUpdate(a *apiDefinition) {
 	log.Infof("Creating/Updating API versionset: '%s'", a.apiID)
 	versionSet, err := apim.createOrUpdateVersionSet(a.apiDisplayName, a.apiVersioningScheme, a.apiID)
 	if err != nil {
@@ -154,8 +171,8 @@ func (apim *azureApimClient) createOrUpdate(a *apiDefinition) {
 	}
 	log.Infof("Created/Updated API versionset: '%s'", *versionSet.ID)
 
-	log.Infof("Creating/Updating API versionset: '%s' with version '%s' (unique id: %s)", a.apiDisplayName, a.apiVersion, a.apiUniqueID)
-	err = apim.createOrUpdateAPI(
+	log.Infof("Creating/Updating API: '%s' with version '%s' (unique id: %s)", a.apiDisplayName, a.apiVersion, a.apiUniqueID)
+	api, err := apim.createOrUpdateAPI(
 		a.openAPIFormat,
 		a.apiDisplayName,
 		a.openAPISpec,
@@ -171,14 +188,24 @@ func (apim *azureApimClient) createOrUpdate(a *apiDefinition) {
 	if err != nil {
 		log.Fatalf("cannot create/update API: %v\n", err)
 	}
-	log.Info("Created/Updated API")
+	log.Info("Created/Updated API '%s'", *api.ID)
 
-	log.Infof("Creating/Updating API Policy for %s", a.apiUniqueID)
+	log.Info("Creating/Updating API Policy")
 	policy, err := apimClient.createOrUpdatePolicy(a.xmlPolicyFormat, a.xmlPolicy, a.apiUniqueID)
 	if err != nil {
 		log.Fatalf("cannot create/update policy: %v\n", err)
 	}
 	log.Infof("Created/Updated API versionset: '%s'", *policy.ID)
+
+	for _, v := range a.apiProducts {
+		log.Infof("Assign API to product '%s'", v)
+		_, err := apimClient.assignToProduct(v, a.apiUniqueID)
+		if err != nil {
+			log.Fatalf("cannot assign api to product: %v\n", err)
+		}
+		log.Info("Assigned API to product")
+	}
+
 }
 
 type apiDefinition struct {
@@ -198,6 +225,8 @@ type apiDefinition struct {
 	apiPath             string
 	apiRevision         string
 	apiServiceURL       string
+	apiProductsRaw      string
+	apiProducts         []string
 
 	apiProtocols         []apimanagement.Protocol
 	subscriptionRequired bool
@@ -209,6 +238,7 @@ func (api *apiDefinition) setDefaults() {
 	api.subscriptionRequired = true
 	api.apiRevision = "1"
 	api.apiUniqueID = fmt.Sprintf("%s-%s", api.apiID, api.apiVersion)
+	api.apiProducts = strings.Split(api.apiProductsRaw, ",")
 }
 
 func (api *apiDefinition) getOpenAPISpec() {
@@ -283,6 +313,7 @@ func init() {
 	flag.StringVar(&apiDef.apiPath, "apipath", "", "the api path relative to the apim service (env var: APIPATH)")
 	flag.StringVar(&apiDef.apiVersion, "apiversion", "", "version number for the versioned api deplopyment (env var: APIVERSION)")
 	flag.StringVar(&apiDef.apiServiceURL, "apiserviceurl", "", "Absolute URL of the backend service implementing this API (env var: APISERVICEURL)")
+	flag.StringVar(&apiDef.apiProductsRaw, "apiproducts", "", "Comma separated list of products to assign the API to, Attention: tool isnt removing API from ANY products at the moment (env var: APIPRODUCTS) - OPTIONAL")
 	flag.Parse()
 
 	if os.Getenv("SUBSCRIPTION") != "" {
@@ -314,6 +345,9 @@ func init() {
 	}
 	if os.Getenv("APISERVICEURL") != "" {
 		apiDef.apiServiceURL = os.Getenv("APISERVICEURL")
+	}
+	if os.Getenv("APIPRODUCTS") != "" {
+		apiDef.apiProductsRaw = os.Getenv("APIPRODUCTS")
 	}
 
 	if (apimClient.subscription == "") ||
