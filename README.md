@@ -8,11 +8,6 @@ The idea is to execute it inside a pipeline to register updates of microservices
 The utility first tries to use the login from the azure cli.
 If this fails it will try to retrieve credentials from the [runtime environment](https://docs.microsoft.com/en-us/azure/developer/go/azure-sdk-authorization#use-environment-based-authentication).
 
-`ATTENTION:` ***At the moment there is a bug in the code which will always overwrite all defined versions of the API with the specified one !!! ***
-E.g. if you have a v1 in APIM and run the utility with -apiversion v2, the v1 registration will be deleted!
-
-
-
 ## Installation
 
 ```bash
@@ -32,6 +27,10 @@ Usage of ./azapim.linux:
         name (api id) of the api to deploy (env var: APIID)
   -apipath string
         the api path relative to the apim service (env var: APIPATH)
+  -apiproducts string
+        Comma separated list of products to assign the API to, Attention: tool isnt removing API from ANY products at the moment (env var: APIPRODUCTS) - OPTIONAL
+  -apiserviceurl string
+        Absolute URL of the backend service implementing this API (env var: APISERVICEURL)
   -apiversion string
         version number for the versioned api deplopyment (env var: APIVERSION)
   -openapispec string
@@ -53,9 +52,32 @@ If you specify https endpoints for the openapispec or the xml policy the data is
 ```bash
 # create or update the api "httpbin" with v1 and openapi spec from a https endpoint and the default xml policy
 ./azapim \
-  -apidisplayname "httpbin api"
-  -apiid "httpbin"
-  -apipath "/httpbin"
-  -apiversion "v1"
-  -openapispec https://my.url/openapispec.json
+  -apidisplayname "httpbin api" \
+  -apiid "httpbin" \
+  -apipath "/httpbin" \
+  -apiserviceurl "https://my.backend.service/httpbin" \
+  -apiversion "v1" \
+  -openapispec https://my.backend.service/httpbin/openapispec.json \
+
+# create or update v2 with a custom xml policy retrieved from a local file
+./azapim \
+  -apidisplayname "httpbin api" \
+  -apiid "httpbin" \
+  -apipath "/httpbin" \
+  -apiserviceurl "https://my.backend.service/httpbin-v2" \
+  -apiversion "v2" \
+  -openapispec https://my.backend.service/httpbin-v2/openapispec.json \
+  -xmlpolicy "file://./policy.xml"
+
+# create or update v2 with a custom xml policy retrieved from a local file
+# and assign it to the starter and unlimited products
+./azapim \
+  -apidisplayname "httpbin api" \
+  -apiid "httpbin" \
+  -apipath "/httpbin" \
+  -apiproducts "starter,unlimited" \
+  -apiserviceurl "https://my.backend.service/httpbin-v2" \
+  -apiversion "v2" \
+  -openapispec https://my.backend.service/httpbin-v2/openapispec.json \
+  -xmlpolicy "file://./policy.xml
 ```
