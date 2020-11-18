@@ -1,5 +1,7 @@
 # changelog
 
+## 0.2.1
+- bugfix: filter out empty products list
 ## 0.2.0
 - bugfix: allow multiple versions to co-exist by creating unique ids
 - feature: allow assignments to products

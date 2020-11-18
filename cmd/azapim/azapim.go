@@ -238,7 +238,9 @@ func (api *apiDefinition) setDefaults() {
 	api.subscriptionRequired = true
 	api.apiRevision = "1"
 	api.apiUniqueID = fmt.Sprintf("%s-%s", api.apiID, api.apiVersion)
-	api.apiProducts = strings.Split(api.apiProductsRaw, ",")
+	if len(apiDef.apiProductsRaw) > 0 {
+		api.apiProducts = strings.Split(strings.TrimSpace(api.apiProductsRaw), ",")
+	}
 }
 
 func (api *apiDefinition) getOpenAPISpec() {
