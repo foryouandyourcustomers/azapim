@@ -27,6 +27,8 @@ Usage of ./azapim.linux:
         name (api id) of the api to deploy (env var: APIID)
   -apipath string
         the api path relative to the apim service (env var: APIPATH)
+  -apiserviceurl string
+        Absolute URL of the backend service implementing this API (env var: APISERVICEURL)
   -apiversion string
         version number for the versioned api deplopyment (env var: APIVERSION)
   -openapispec string
@@ -48,9 +50,20 @@ If you specify https endpoints for the openapispec or the xml policy the data is
 ```bash
 # create or update the api "httpbin" with v1 and openapi spec from a https endpoint and the default xml policy
 ./azapim \
-  -apidisplayname "httpbin api"
-  -apiid "httpbin"
-  -apipath "/httpbin"
-  -apiversion "v1"
-  -openapispec https://my.url/openapispec.json
+  -apidisplayname "httpbin api" \
+  -apiid "httpbin" \
+  -apipath "/httpbin" \
+  -apiserviceurl "https://my.backend.service/httpbin" \
+  -apiversion "v1" \
+  -openapispec https://my.backend.service/httpbin/openapispec.json \
+
+# create or update v2 with a custom xml policy retrieved from a local file
+./azapim \
+  -apidisplayname "httpbin api" \
+  -apiid "httpbin" \
+  -apipath "/httpbin" \
+  -apiserviceurl "https://my.backend.service/httpbin-v2" \
+  -apiversion "v2" \
+  -openapispec https://my.backend.service/httpbin-v2/openapispec.json \
+  -xmlpolicy "file://./policy.xml
 ```
