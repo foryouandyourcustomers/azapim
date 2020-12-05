@@ -19,6 +19,7 @@ type ApimClient struct {
 	PolicyClient      apimanagement.APIPolicyClient
 	ProductsAPIClient apimanagement.ProductAPIClient
 	ProductClient     apimanagement.ProductClient
+	ServiceClient     apimanagement.ServiceClient
 	Subscription      string
 	ResourceGroup     string
 	ServiceName       string
@@ -31,6 +32,7 @@ func (apim *ApimClient) Authenticate() {
 	apim.PolicyClient = apimanagement.NewAPIPolicyClient(apim.Subscription)
 	apim.ProductsAPIClient = apimanagement.NewProductAPIClient(apim.Subscription)
 	apim.ProductClient = apimanagement.NewProductClient(apim.Subscription)
+	apim.ServiceClient = apimanagement.NewServiceClient(apim.Subscription)
 
 	a, err := auth.NewAuthorizerFromCLI()
 	if err != nil {
@@ -45,6 +47,7 @@ func (apim *ApimClient) Authenticate() {
 	apim.PolicyClient.Authorizer = a
 	apim.ProductsAPIClient.Authorizer = a
 	apim.ProductClient.Authorizer = a
+	apim.ServiceClient.Authorizer = a
 }
 
 // CreateOrUpdate - create or update the specified api
