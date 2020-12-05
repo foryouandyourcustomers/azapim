@@ -12,4 +12,5 @@ require (
 	github.com/prometheus/common v0.15.0
 	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.7.0
+	github.com/urfave/cli/v2 v2.3.0
 )
