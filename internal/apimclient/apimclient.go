@@ -2,6 +2,7 @@ package apimclient
 
 import (
 	"context"
+	"time"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/apimanagement/mgmt/apimanagement"
 
@@ -48,6 +49,9 @@ func (apim *ApimClient) Authenticate() {
 	apim.ProductsAPIClient.Authorizer = a
 	apim.ProductClient.Authorizer = a
 	apim.ServiceClient.Authorizer = a
+
+	// increase the polling timeout for the service client to 30 minutes
+	apim.ServiceClient.Client.PollingDuration = 30 * time.Minute
 }
 
 // CreateOrUpdate - create or update the specified api
