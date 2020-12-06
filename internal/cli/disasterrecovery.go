@@ -54,18 +54,18 @@ var (
 					Action: func(c *ucli.Context) error {
 						err := apimClient.Backup(apimClient.ResourceGroup, apimClient.ServiceName, dr.Parameters)
 						if err != nil {
-							return ucli.Exit("Unable to create backup for service", 1)
+							return ucli.Exit(err, 1)
 						}
 						return nil
 					},
 				},
 				{
 					Name:  "restore",
-					Usage: "Resttore the api management service",
+					Usage: "Restore the api management service",
 					Action: func(c *ucli.Context) error {
 						err := apimClient.Restore(apimClient.ResourceGroup, apimClient.ServiceName, dr.Parameters)
 						if err != nil {
-							return ucli.Exit("Unable to restore service", 1)
+							return ucli.Exit(err, 1)
 						}
 						return nil
 					},

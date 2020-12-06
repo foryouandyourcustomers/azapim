@@ -31,7 +31,10 @@ var (
 						apiDef.SetDefaults()
 						apiDef.GetOpenAPISpec()
 						apiDef.GetXMLPolicy()
-						apimClient.CreateOrUpdate(&apiDef)
+						err := apimClient.CreateOrUpdate(&apiDef)
+						if err != nil {
+							return ucli.Exit(err, 1)
+						}
 						return nil
 					},
 					Flags: []ucli.Flag{
