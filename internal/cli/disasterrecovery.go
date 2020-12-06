@@ -44,7 +44,6 @@ var (
 					Usage:       "the name of the backup to create or restore from",
 					Required:    false,
 					EnvVars:     []string{"BACKUPNAME"},
-					Value:       fmt.Sprintf("%s-%d", apimClient.ServiceName, time.Now().Unix()),
 					Destination: &dr.BackupName,
 				},
 			},
@@ -73,6 +72,9 @@ var (
 				},
 			},
 			Before: func(c *ucli.Context) error {
+				if len(dr.BackupName) == 0 {
+					dr.BackupName = fmt.Sprintf("%s-%d", apimClient.ServiceName, time.Now().Unix())
+				}
 				dr.Initialize(apimClient.Subscription)
 				return nil
 			},
