@@ -2,6 +2,7 @@ package apimclient
 
 import (
 	"context"
+	"time"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/apimanagement/mgmt/apimanagement"
 
@@ -19,6 +20,7 @@ type ApimClient struct {
 	PolicyClient      apimanagement.APIPolicyClient
 	ProductsAPIClient apimanagement.ProductAPIClient
 	ProductClient     apimanagement.ProductClient
+	ServiceClient     apimanagement.ServiceClient
 	Subscription      string
 	ResourceGroup     string
 	ServiceName       string
@@ -31,6 +33,7 @@ func (apim *ApimClient) Authenticate() {
 	apim.PolicyClient = apimanagement.NewAPIPolicyClient(apim.Subscription)
 	apim.ProductsAPIClient = apimanagement.NewProductAPIClient(apim.Subscription)
 	apim.ProductClient = apimanagement.NewProductClient(apim.Subscription)
+	apim.ServiceClient = apimanagement.NewServiceClient(apim.Subscription)
 
 	a, err := auth.NewAuthorizerFromCLI()
 	if err != nil {
@@ -45,14 +48,18 @@ func (apim *ApimClient) Authenticate() {
 	apim.PolicyClient.Authorizer = a
 	apim.ProductsAPIClient.Authorizer = a
 	apim.ProductClient.Authorizer = a
+	apim.ServiceClient.Authorizer = a
+
+	// increase the polling timeout for the service client to 30 minutes
+	apim.ServiceClient.Client.PollingDuration = 30 * time.Minute
 }
 
 // CreateOrUpdate - create or update the specified api
-func (apim *ApimClient) CreateOrUpdate(a *apidefinition.Definition) {
+func (apim *ApimClient) CreateOrUpdate(a *apidefinition.Definition) error {
 	log.Infof("Creating/Updating API versionset: '%s'", a.APIID)
 	versionSet, err := apim.CreateOrUpdateVersionSet(a.APIDisplayName, a.APIVersioningScheme, a.APIID)
 	if err != nil {
-		log.Fatalf("cannot create/update version set: %v\n", err)
+		return err
 	}
 	log.Infof("Created/Updated API versionset: '%s'", *versionSet.ID)
 
@@ -71,14 +78,14 @@ func (apim *ApimClient) CreateOrUpdate(a *apidefinition.Definition) {
 		a.APIServiceURL,
 	)
 	if err != nil {
-		log.Fatalf("cannot create/update API: %v\n", err)
+		return err
 	}
 	log.Info("Created/Updated API '%s'", *api.ID)
 
 	log.Info("Creating/Updating API Policy")
 	policy, err := apim.CreateOrUpdatePolicy(a.XMLPolicyFormat, a.XMLPolicy, a.APIUniqueID)
 	if err != nil {
-		log.Fatalf("cannot create/update policy: %v\n", err)
+		return err
 	}
 	log.Infof("Created/Updated API versionset: '%s'", *policy.ID)
 
@@ -86,9 +93,9 @@ func (apim *ApimClient) CreateOrUpdate(a *apidefinition.Definition) {
 		log.Infof("Assign API to product '%s'", v)
 		_, err := apim.AssignToProduct(v, a.APIUniqueID)
 		if err != nil {
-			log.Fatalf("cannot assign api to product: %v\n", err)
+			return err
 		}
 		log.Info("Assigned API to product")
 	}
-
+	return nil
 }

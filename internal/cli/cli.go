@@ -11,7 +11,7 @@ var (
 	apimClient apimclient.ApimClient
 
 	// Collection contains alli api commands from cli package
-	Collection = append(VersionedAPICli)
+	Collection = append(VersionedAPICli, DisasterRecoveryCli...)
 
 	// GlobalFlags contains the definition of all global parameters
 	GlobalFlags = []ucli.Flag{

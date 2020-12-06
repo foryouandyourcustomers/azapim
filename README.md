@@ -21,7 +21,7 @@ or download the latest release.
 ```bash
 $ ./azapim -h
 NAME:
-   azapim - A new cli application
+   azapim - Helper functions for Azure API management service
 
 USAGE:
    azapim [global options] command [command options] [arguments...]
@@ -30,6 +30,8 @@ COMMANDS:
    help, h  Shows a list of commands or help for one command
    Apis:
      versionedapi  Manage versioned apis
+   Management:
+     dr  Create APIM disaster recovery backups or restore from them
 
 GLOBAL OPTIONS:
    --subscription ID     Azure Subscription ID of the API management service [$SUBSCRIPTION]
@@ -42,35 +44,79 @@ If you specify https endpoints for the openapispec or the xml policy the data is
 
 ### Examples
 
+#### create or update versioned api
+
 ```bash
 # create or update the api "httpbin" with v1 and openapi spec from a https endpoint and the default xml policy
-./azapim versionedapi create \
-  -apidisplayname "httpbin api" \
-  -apiid "httpbin" \
-  -apipath "/httpbin" \
-  -apiserviceurl "https://my.backend.service/httpbin" \
-  -apiversion "v1" \
-  -openapispec https://my.backend.service/httpbin/openapispec.json \
+./azapim \
+  --subscription=00000000-0000-0000-0000-000000000000 \
+  --resourcegroup=apimresourcegroup \
+  --servicename=apimservicename \
+  versionedapi \
+  --apiid "httpbin" \
+  create \
+  --apidisplayname "httpbin api" \
+  --apipath "/httpbin" \
+  --apiserviceurl "https://my.backend.service/httpbin" \
+  --apiversion "v1" \
+  --openapispec https://my.backend.service/httpbin/openapispec.json
 
 # create or update v2 with a custom xml policy retrieved from a local file
-./azapim versionedapi create \
-  -apidisplayname "httpbin api" \
-  -apiid "httpbin" \
-  -apipath "/httpbin" \
-  -apiserviceurl "https://my.backend.service/httpbin-v2" \
-  -apiversion "v2" \
-  -openapispec https://my.backend.service/httpbin-v2/openapispec.json \
-  -xmlpolicy "file://./policy.xml"
+./azapim \
+  --subscription=00000000-0000-0000-0000-000000000000 \
+  --resourcegroup=apimresourcegroup \
+  --servicename=apimservicename \
+  versionedapi \
+  --apiid "httpbin" \
+  create \
+  --apidisplayname "httpbin api" \
+  --apipath "/httpbin" \
+  --apiserviceurl "https://my.backend.service/httpbin-v2" \
+  --apiversion "v2" \
+  --openapispec https://my.backend.service/httpbin-v2/openapispec.json \
+  --xmlpolicy "file://./policy.xml" 
 
 # create or update v2 with a custom xml policy retrieved from a local file
 # and assign it to the starter and unlimited products
-./azapim versionedapi create \
-  -apidisplayname "httpbin api" \
-  -apiid "httpbin" \
-  -apipath "/httpbin" \
-  -apiproducts "starter,unlimited" \
-  -apiserviceurl "https://my.backend.service/httpbin-v2" \
-  -apiversion "v2" \
-  -openapispec https://my.backend.service/httpbin-v2/openapispec.json \
-  -xmlpolicy "file://./policy.xml
+./azapim \
+  --subscription=00000000-0000-0000-0000-000000000000 \
+  --resourcegroup=apimresourcegroup \
+  --servicename=apimservicename \
+  versionedapi \
+  --apiid "httpbin" \
+  create \
+  --apidisplayname "httpbin api" \
+  --apipath "/httpbin" \
+  --apiproducts "starter,unlimited" \
+  --apiserviceurl "https://my.backend.service/httpbin-v2" \
+  --apiversion "v2" \
+  --openapispec https://my.backend.service/httpbin-v2/openapispec.json \
+  --xmlpolicy "file://./policy.xml"
+```
+
+#### backup and restore an api management service
+
+```BASH
+# create a disaster recovery backup
+./azapim.linux \
+  --subscription=00000000-0000-0000-0000-000000000000 \
+  --resourcegroup=apimresourcegroup \
+  --servicename=apimservicename \
+  dr \
+  --storageaccount=backupstorageaccount \
+  --storageaccountrg=backupstorageaccountresourcegroup \
+  --blobname=backupcontainer \
+  backup
+
+# restore from a backup
+./azapim.linux \
+  --subscription=00000000-0000-0000-0000-000000000000 \
+  --resourcegroup=apimresourcegroup \
+  --servicename=apimservicename \
+  dr
+  --storageaccount=backupstorageaccount \
+  --storageaccountrg=backupstorageaccountresourcegroup \
+  --blobname=backupcontainer \
+  --backupname=apimservicename-1607213258 \
+  restore
 ```
