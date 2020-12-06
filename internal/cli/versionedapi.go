@@ -29,9 +29,15 @@ var (
 					Usage: "Create or Update a versioned api",
 					Action: func(c *ucli.Context) error {
 						apiDef.SetDefaults()
-						apiDef.GetOpenAPISpec()
-						apiDef.GetXMLPolicy()
-						err := apimClient.CreateOrUpdate(&apiDef)
+						err := apiDef.GetOpenAPISpec()
+						if err != nil {
+							return ucli.Exit(err, 1)
+						}
+						err = apiDef.GetXMLPolicy()
+						if err != nil {
+							return ucli.Exit(err, 1)
+						}
+						err = apimClient.CreateOrUpdate(&apiDef)
 						if err != nil {
 							return ucli.Exit(err, 1)
 						}

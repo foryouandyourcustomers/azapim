@@ -48,7 +48,7 @@ func (api *Definition) SetDefaults() {
 }
 
 // GetOpenAPISpec retrieves the openapi spec file either from file or url. if unable to load spec throws an exception
-func (api *Definition) GetOpenAPISpec() {
+func (api *Definition) GetOpenAPISpec() error {
 
 	if strings.HasPrefix(api.OpenAPISpecPath, "https://") || strings.HasPrefix(api.OpenAPISpecPath, "http://") {
 		log.Infof("OpenApi Spec will be downloaded by APIM during create/update from '%s'", api.OpenAPISpecPath)
@@ -63,15 +63,16 @@ func (api *Definition) GetOpenAPISpec() {
 		}
 		file, err := ioutil.ReadFile(f)
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 		api.OpenAPISpec = string(file)
 		api.OpenAPIFormat = apimanagement.Openapijson
 	}
+	return nil
 }
 
 // GetXMLPolicy retrives the xml policy either from file or from url. if not specified loads default, empty xml policy
-func (api *Definition) GetXMLPolicy() {
+func (api *Definition) GetXMLPolicy() error {
 	if api.XMLPolicyPath == "" {
 		log.Info("No xml policy given, load default policy")
 		api.XMLPolicyFormat = apimanagement.XML
@@ -103,9 +104,10 @@ func (api *Definition) GetXMLPolicy() {
 		}
 		file, err := ioutil.ReadFile(f)
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 		api.XMLPolicy = string(file)
 		api.XMLPolicyFormat = apimanagement.XML
 	}
+	return nil
 }
