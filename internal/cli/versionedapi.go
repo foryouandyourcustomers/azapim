@@ -81,7 +81,7 @@ var (
 							Destination: &apiDef.APIProductsRaw,
 						},
 						&ucli.StringFlag{
-							Name:        "displayname",
+							Name:        "apidisplayname",
 							Usage:       "Display name in the API management service ",
 							Required:    false,
 							EnvVars:     []string{"APIDISPLAYNAME"},
