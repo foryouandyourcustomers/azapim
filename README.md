@@ -48,38 +48,44 @@ If you specify https endpoints for the openapispec or the xml policy the data is
 
 ```bash
 # create or update the api "httpbin" with v1 and openapi spec from a https endpoint and the default xml policy
-./azapim versionedapi create \
+./azapim \
   --subscription=00000000-0000-0000-0000-000000000000 \
   --resourcegroup=apimresourcegroup \
   --servicename=apimservicename \
-  --apidisplayname "httpbin api" \
+  versionedapi \
   --apiid "httpbin" \
+  create \
+  --apidisplayname "httpbin api" \
   --apipath "/httpbin" \
   --apiserviceurl "https://my.backend.service/httpbin" \
   --apiversion "v1" \
-  --openapispec https://my.backend.service/httpbin/openapispec.json \
+  --openapispec https://my.backend.service/httpbin/openapispec.json
 
 # create or update v2 with a custom xml policy retrieved from a local file
-./azapim versionedapi create \
+./azapim \
   --subscription=00000000-0000-0000-0000-000000000000 \
   --resourcegroup=apimresourcegroup \
   --servicename=apimservicename \
-  --apidisplayname "httpbin api" \
+  versionedapi \
   --apiid "httpbin" \
+  create \
+  --apidisplayname "httpbin api" \
   --apipath "/httpbin" \
   --apiserviceurl "https://my.backend.service/httpbin-v2" \
   --apiversion "v2" \
   --openapispec https://my.backend.service/httpbin-v2/openapispec.json \
-  --xmlpolicy "file://./policy.xml"
+  --xmlpolicy "file://./policy.xml" 
 
 # create or update v2 with a custom xml policy retrieved from a local file
 # and assign it to the starter and unlimited products
-./azapim versionedapi create \
+./azapim \
   --subscription=00000000-0000-0000-0000-000000000000 \
   --resourcegroup=apimresourcegroup \
   --servicename=apimservicename \
-  --apidisplayname "httpbin api" \
+  versionedapi \
   --apiid "httpbin" \
+  create \
+  --apidisplayname "httpbin api" \
   --apipath "/httpbin" \
   --apiproducts "starter,unlimited" \
   --apiserviceurl "https://my.backend.service/httpbin-v2" \
@@ -90,23 +96,27 @@ If you specify https endpoints for the openapispec or the xml policy the data is
 
 #### backup and restore an api management service
 
-```
+```BASH
 # create a disaster recovery backup
-./azapim.linux dr backup \
+./azapim.linux \
   --subscription=00000000-0000-0000-0000-000000000000 \
   --resourcegroup=apimresourcegroup \
   --servicename=apimservicename \
-  --storageaccount=backupstorageaccount \
-  --storageaccountrg=backupstorageaccountresourcegroup \
-  --blobname=backupcontainer 
-
-# restore from a backup
-./azapim.linux dr restore \
-  --subscription=00000000-0000-0000-0000-000000000000 \
-  --resourcegroup=apimresourcegroup \
-  --servicename=apimservicename \
+  dr \
   --storageaccount=backupstorageaccount \
   --storageaccountrg=backupstorageaccountresourcegroup \
   --blobname=backupcontainer \
-  --backupname=
+  backup
+
+# restore from a backup
+./azapim.linux \
+  --subscription=00000000-0000-0000-0000-000000000000 \
+  --resourcegroup=apimresourcegroup \
+  --servicename=apimservicename \
+  dr
+  --storageaccount=backupstorageaccount \
+  --storageaccountrg=backupstorageaccountresourcegroup \
+  --blobname=backupcontainer \
+  --backupname=apimservicename-1607213258 \
+  restore
 ```
