@@ -10,6 +10,7 @@ import (
 
 func main() {
 	app := &ucli.App{
+		Name:     "azapim",
 		Usage:    "Helper functions for Azure API management service",
 		Flags:    cli.GlobalFlags,
 		Before:   cli.BeforeFunction,

@@ -14,7 +14,7 @@ var (
 	// DisasterRecoveryCli contains the disaster recovery cli
 	DisasterRecoveryCli = []*ucli.Command{
 		{
-			Name:     "disasterrecovery",
+			Name:     "dr",
 			Category: "Management",
 			Usage:    "Create APIM disaster recovery backups or restore from them",
 			Flags: []ucli.Flag{
