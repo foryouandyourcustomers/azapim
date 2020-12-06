@@ -7,6 +7,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/apimanagement/mgmt/apimanagement"
 	"github.com/prometheus/common/log"
+	"github.com/urfave/cli/v2"
 )
 
 // Definition allows to set all required values for regsitering and updating an API
@@ -28,8 +29,7 @@ type Definition struct {
 	APIPath             string
 	APIRevision         string
 	APIServiceURL       string
-	APIProductsRaw      string
-	APIProducts         []string
+	APIProducts         cli.StringSlice
 
 	APIProtocols         []apimanagement.Protocol
 	SubscriptionRequired bool
@@ -42,9 +42,6 @@ func (api *Definition) SetDefaults() {
 	api.SubscriptionRequired = true
 	api.APIRevision = "1"
 	api.APIUniqueID = fmt.Sprintf("%s-%s", api.APIID, api.APIVersion)
-	if len(api.APIProductsRaw) > 0 {
-		api.APIProducts = strings.Split(strings.TrimSpace(api.APIProductsRaw), ",")
-	}
 }
 
 // GetOpenAPISpec retrieves the openapi spec file either from file or url. if unable to load spec throws an exception

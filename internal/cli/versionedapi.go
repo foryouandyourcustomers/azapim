@@ -79,12 +79,12 @@ var (
 							EnvVars:     []string{"APISERVICEURL"},
 							Destination: &apiDef.APIServiceURL,
 						},
-						&ucli.StringFlag{
-							Name:        "apiproducts",
-							Usage:       "Comma separated list of products to assign the API to, Attention: tool isnt removing API from ANY products at the moment",
+						&ucli.StringSliceFlag{
+							Name:        "product",
+							Usage:       "list of products to assign to the api",
 							Required:    false,
 							EnvVars:     []string{"APIPRODUCTS"},
-							Destination: &apiDef.APIProductsRaw,
+							Destination: &apiDef.APIProducts,
 						},
 						&ucli.StringFlag{
 							Name:        "apidisplayname",

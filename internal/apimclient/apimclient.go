@@ -89,7 +89,7 @@ func (apim *ApimClient) CreateOrUpdate(a *apidefinition.Definition) error {
 	}
 	log.Infof("Created/Updated API versionset: '%s'", *policy.ID)
 
-	for _, v := range a.APIProducts {
+	for _, v := range a.APIProducts.Value() {
 		log.Infof("Assign API to product '%s'", v)
 		_, err := apim.AssignToProduct(v, a.APIUniqueID)
 		if err != nil {
