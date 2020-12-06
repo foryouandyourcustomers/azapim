@@ -1,5 +1,9 @@
 # changelog
 
+## 0.3.0 
+- BREAKING: feature: introduce ufave cli module for cli handling see README for new cli structure
+- feature: Add disaster recovery functions
+
 ## 0.2.1
 - bugfix: filter out empty products list
 ## 0.2.0
