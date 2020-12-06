@@ -24,7 +24,7 @@ func (dr *DisasterRecovery) Initialize(s string) {
 
 // Backup backups the specified api management service
 func (apim *ApimClient) Backup(rg string, s string, p apimanagement.ServiceBackupRestoreParameters) error {
-	log.Infof("Execute DR Backup for Service '%s' with name '%s' to storage account and blob '%s/%s'", s, p.BackupName, p.StorageAccount, p.StorageAccount)
+	log.Infof("Execute DR Backup for Service '%s' with name '%s' to storage account and blob '%s/%s'", s, *p.BackupName, *p.StorageAccount, *p.ContainerName)
 	future, err := apim.ServiceClient.Backup(apim.Ctx, rg, s, p)
 	if err != nil {
 		return err
@@ -38,7 +38,7 @@ func (apim *ApimClient) Backup(rg string, s string, p apimanagement.ServiceBacku
 
 // Restore disaster recovery backup for apim service
 func (apim *ApimClient) Restore(rg string, s string, p apimanagement.ServiceBackupRestoreParameters) error {
-	log.Infof("Execute DR Restore for Service '%s' with name '%s' to storage account and blob '%s/%s'", s, p.BackupName, p.StorageAccount, p.StorageAccount)
+	log.Infof("Execute DR Restore for Service '%s' with name '%s' to storage account and blob '%s/%s'", s, *p.BackupName, *p.StorageAccount, *p.ContainerName)
 	future, err := apim.ServiceClient.Restore(apim.Ctx, rg, s, p)
 	if err != nil {
 		return err
